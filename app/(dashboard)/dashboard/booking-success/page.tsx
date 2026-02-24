@@ -1,5 +1,4 @@
 import Stripe from 'stripe'
-import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { AlertCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -129,9 +128,6 @@ export default async function BookingSuccessPage({
       .single()
 
     meeting = created
-
-    revalidatePath('/dashboard')
-    revalidatePath('/admin/bookings')
   }
 
   // Format for display

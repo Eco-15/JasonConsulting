@@ -9,16 +9,18 @@ export async function createMeetingEvent(params: {
   clientEmail: string
   notes?: string
 }): Promise<string | null> {
-  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+  const clientId = process.env.GOOGLE_CLIENT_ID
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN
   const calendarId = process.env.GOOGLE_CALENDAR_ID
   const jasonEmail = process.env.JASON_EMAIL
 
-  if (!serviceAccountEmail || !privateKey || !calendarId || !jasonEmail) {
+  if (!clientId || !clientSecret || !refreshToken || !calendarId || !jasonEmail) {
     throw new Error(
       `Missing Google env vars: ${[
-        !serviceAccountEmail && 'GOOGLE_SERVICE_ACCOUNT_EMAIL',
-        !privateKey && 'GOOGLE_PRIVATE_KEY',
+        !clientId && 'GOOGLE_CLIENT_ID',
+        !clientSecret && 'GOOGLE_CLIENT_SECRET',
+        !refreshToken && 'GOOGLE_REFRESH_TOKEN',
         !calendarId && 'GOOGLE_CALENDAR_ID',
         !jasonEmail && 'JASON_EMAIL',
       ]
@@ -27,15 +29,10 @@ export async function createMeetingEvent(params: {
     )
   }
 
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: serviceAccountEmail,
-      private_key: privateKey,
-    },
-    scopes: ['https://www.googleapis.com/auth/calendar'],
-  })
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret)
+  oauth2Client.setCredentials({ refresh_token: refreshToken })
 
-  const calendar = google.calendar({ version: 'v3', auth })
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
 
   const requestId = `booking-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
