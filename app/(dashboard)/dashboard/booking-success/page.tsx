@@ -1,11 +1,12 @@
 import Stripe from 'stripe'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
-import { CheckCircle, Video, Calendar, Clock, AlertCircle } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { AlertCircle } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { createMeetingEvent } from '@/lib/google/calendar'
+import SuccessView from './success-view'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-01-28.clover',
@@ -61,6 +62,15 @@ export default async function BookingSuccessPage({
 
   const supabase = await createClient()
 
+  // Always fetch client profile for the display
+  const { data: clientProfile } = await supabase
+    .from('profiles')
+    .select('full_name, email')
+    .eq('id', client_id)
+    .single()
+
+  const clientName = clientProfile?.full_name || clientProfile?.email || 'there'
+
   // Idempotency: return existing meeting if success page is refreshed
   const { data: existing } = await supabase
     .from('meetings')
@@ -71,13 +81,6 @@ export default async function BookingSuccessPage({
   let meeting = existing
 
   if (!meeting) {
-    // Fetch client profile for the Google Meet title and invite
-    const { data: clientProfile } = await supabase
-      .from('profiles')
-      .select('full_name, email')
-      .eq('id', client_id)
-      .single()
-
     // Fetch pricing tier
     const { data: tier } = await supabase
       .from('pricing_tiers')
@@ -92,7 +95,6 @@ export default async function BookingSuccessPage({
     const startTime = new Date(`${date}T${time}:00`)
     const endTime = new Date(startTime.getTime() + tier.duration_minutes * 60 * 1000)
 
-    const clientName = clientProfile.full_name || clientProfile.email
     const eventTitle = `${tier.label}: Jason Graziani <> ${clientName}`
 
     // Create Google Calendar event with Meet link
@@ -107,7 +109,6 @@ export default async function BookingSuccessPage({
       })
     } catch (err) {
       console.error('Google Meet creation failed:', err)
-      // Continue — still create the meeting record even if Meet fails
     }
 
     // Create meeting record in Supabase
@@ -147,41 +148,11 @@ export default async function BookingSuccessPage({
   })
 
   return (
-    <div className="flex items-center justify-center py-10">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center pb-2">
-          <CheckCircle className="h-14 w-14 text-green-500 mx-auto mb-2" />
-          <CardTitle className="text-2xl">Booking Confirmed!</CardTitle>
-          <p className="text-gray-500 text-sm mt-1">
-            A Google Calendar invite has been sent to your email.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-4">
-          <div className="rounded-lg border p-4 space-y-3 text-sm">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-500 shrink-0" />
-              <span>{formattedDate}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-gray-500 shrink-0" />
-              <span>{formattedTime}</span>
-            </div>
-          </div>
-
-          {meeting?.meet_url && (
-            <Button asChild className="w-full gap-2">
-              <a href={meeting.meet_url} target="_blank" rel="noopener noreferrer">
-                <Video className="h-4 w-4" />
-                Join Google Meet
-              </a>
-            </Button>
-          )}
-
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/dashboard">Go to Dashboard</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+    <SuccessView
+      clientName={clientName}
+      formattedDate={formattedDate}
+      formattedTime={formattedTime}
+      meetUrl={meeting?.meet_url ?? null}
+    />
   )
 }
