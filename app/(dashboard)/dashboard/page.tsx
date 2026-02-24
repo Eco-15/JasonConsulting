@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar, Clock, FileText } from 'lucide-react'
 import Link from 'next/link'
-import { CancelMeetingButton } from './cancel-meeting-button'
+import { MeetingActions } from './cancel-meeting-button'
 
 export default async function MyMeetingsPage() {
   const supabase = await createClient()
@@ -102,7 +102,7 @@ export default async function MyMeetingsPage() {
                         ${meeting.price}
                       </span>
                     </div>
-                    <CancelMeetingButton meetingId={meeting.id} />
+                    <MeetingActions meeting={meeting} />
                   </CardContent>
                 </Card>
               ))}

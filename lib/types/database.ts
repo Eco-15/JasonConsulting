@@ -51,6 +51,7 @@ export interface Meeting {
   client_notes: string | null
   stripe_session_id: string | null
   meet_url: string | null
+  google_event_id: string | null
   created_at: string
   updated_at: string
 }

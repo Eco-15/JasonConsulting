@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { bookMeetingSchema } from '@/lib/validations/meetings'
 import type { MeetingStatus } from '@/lib/types/database'
+import { deleteCalendarEvent, updateCalendarEvent } from '@/lib/google/calendar'
 
 export async function bookMeeting(formData: {
   date: string
@@ -115,6 +116,15 @@ export async function cancelMeeting(meetingId: string) {
     return { error: 'Not authenticated' }
   }
 
+  // Fetch meeting to get google_event_id before cancelling
+  const { data: meeting } = await supabase
+    .from('meetings')
+    .select('google_event_id')
+    .eq('id', meetingId)
+    .eq('client_id', user.id)
+    .eq('status', 'scheduled')
+    .single()
+
   const { error } = await supabase
     .from('meetings')
     .update({ status: 'cancelled', updated_at: new Date().toISOString() })
@@ -124,6 +134,102 @@ export async function cancelMeeting(meetingId: string) {
 
   if (error) {
     return { error: 'Failed to cancel meeting.' }
+  }
+
+  // Delete Google Calendar event (non-blocking)
+  if (meeting?.google_event_id) {
+    try {
+      await deleteCalendarEvent(meeting.google_event_id)
+    } catch (err) {
+      console.error('Failed to delete Google Calendar event:', err)
+    }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/admin/bookings')
+  return { success: true }
+}
+
+export async function rescheduleMeeting(meetingId: string, newDate: string, newTime: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+
+  // Fetch the meeting to verify ownership and get details
+  const { data: meeting } = await supabase
+    .from('meetings')
+    .select('*')
+    .eq('id', meetingId)
+    .eq('client_id', user.id)
+    .eq('status', 'scheduled')
+    .single()
+
+  if (!meeting) {
+    return { error: 'Meeting not found or cannot be rescheduled.' }
+  }
+
+  const newStartTime = new Date(`${newDate}T${newTime}:00`)
+  const newEndTime = new Date(newStartTime.getTime() + meeting.duration_minutes * 60 * 1000)
+
+  // Check availability for the new day
+  const dayOfWeek = newStartTime.getDay()
+  const { data: availability } = await supabase
+    .from('availability')
+    .select('*')
+    .eq('day_of_week', dayOfWeek)
+    .eq('is_available', true)
+    .single()
+
+  if (!availability) {
+    return { error: 'No availability on that day.' }
+  }
+
+  // Check blocked dates
+  const { data: blocked } = await supabase
+    .from('blocked_dates')
+    .select('id')
+    .eq('blocked_date', newDate)
+    .single()
+
+  if (blocked) {
+    return { error: 'That date is not available for bookings.' }
+  }
+
+  // Conflict check excluding the current meeting being rescheduled
+  const { data: conflicts } = await supabase
+    .from('meetings')
+    .select('id')
+    .neq('status', 'cancelled')
+    .neq('id', meetingId)
+    .lt('start_time', newEndTime.toISOString())
+    .gt('start_time', new Date(newStartTime.getTime() - 180 * 60 * 1000).toISOString())
+
+  if (conflicts && conflicts.length > 0) {
+    return { error: 'That time slot is no longer available. Please choose another.' }
+  }
+
+  // Update the meeting in Supabase
+  const { error } = await supabase
+    .from('meetings')
+    .update({ start_time: newStartTime.toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', meetingId)
+
+  if (error) {
+    return { error: 'Failed to reschedule meeting.' }
+  }
+
+  // Update Google Calendar event (non-blocking)
+  if (meeting.google_event_id) {
+    try {
+      await updateCalendarEvent(meeting.google_event_id, newStartTime, newEndTime)
+    } catch (err) {
+      console.error('Failed to update Google Calendar event:', err)
+    }
   }
 
   revalidatePath('/dashboard')

@@ -98,14 +98,17 @@ export default async function BookingSuccessPage({
 
     // Create Google Calendar event with Meet link
     let meetUrl: string | null = null
+    let googleEventId: string | null = null
     try {
-      meetUrl = await createMeetingEvent({
+      const result = await createMeetingEvent({
         title: eventTitle,
         startTime,
         endTime,
         clientEmail: clientProfile.email,
         notes: client_notes || undefined,
       })
+      meetUrl = result.meetUrl
+      googleEventId = result.eventId
     } catch (err) {
       console.error('Google Meet creation failed:', err)
     }
@@ -123,6 +126,7 @@ export default async function BookingSuccessPage({
         client_notes: client_notes || null,
         stripe_session_id: session_id,
         meet_url: meetUrl,
+        google_event_id: googleEventId,
       })
       .select()
       .single()
