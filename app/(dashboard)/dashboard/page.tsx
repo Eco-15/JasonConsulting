@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, Clock, FileText } from 'lucide-react'
+import { Calendar, Clock, FileText, Video } from 'lucide-react'
 import Link from 'next/link'
 import { MeetingActions } from './cancel-meeting-button'
 
@@ -102,6 +102,14 @@ export default async function MyMeetingsPage() {
                         ${meeting.price}
                       </span>
                     </div>
+                    {meeting.meet_url && (
+                      <Button asChild size="sm" className="w-full gap-2">
+                        <a href={meeting.meet_url} target="_blank" rel="noopener noreferrer">
+                          <Video className="h-4 w-4" />
+                          Join Google Meet
+                        </a>
+                      </Button>
+                    )}
                     <MeetingActions meeting={meeting} />
                   </CardContent>
                 </Card>
