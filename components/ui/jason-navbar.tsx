@@ -1,18 +1,11 @@
 "use client";
 import React, { useState } from "react";
-import { usePathname } from "next/navigation";
 import { HoveredLink, Menu, MenuItem } from "@/components/ui/navbar-menu";
+import { AuthButton } from "@/components/dashboard/auth-button";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 
 export function JasonNavbar({ className }: { className?: string }) {
   const [active, setActive] = useState<string | null>(null);
-  const pathname = usePathname();
-
-  // Hide navbar on dashboard pages (admin and client portals)
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/client')) {
-    return null;
-  }
 
   return (
     <div
@@ -44,13 +37,7 @@ export function JasonNavbar({ className }: { className?: string }) {
           </div>
         </MenuItem>
 
-        <Link
-          href="/login"
-          className="relative z-50 cursor-pointer text-black hover:text-[#d4af37] transition-colors dark:text-white"
-          onMouseEnter={() => setActive(null)}
-        >
-          Login
-        </Link>
+        <AuthButton onHover={() => setActive(null)} />
       </Menu>
     </div>
   );

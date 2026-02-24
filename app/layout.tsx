@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { JasonNavbar } from "@/components/ui/jason-navbar";
-import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -39,11 +37,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="overflow-x-hidden">
       <body className={`${inter.className} overflow-x-hidden`}>
-        <AuthProvider>
-          <JasonNavbar />
-          <main className="overflow-x-hidden">{children}</main>
-          <Toaster position="top-center" richColors />
-        </AuthProvider>
+        {children}
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

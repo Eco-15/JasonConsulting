@@ -17,7 +17,7 @@
         "npm:@radix-ui/react-slot@^1.2.4",
         "npm:@radix-ui/react-tabs@^1.1.13",
         "npm:@supabase/ssr@0.8",
-        "npm:@supabase/supabase-js@^2.90.1",
+        "npm:@supabase/supabase-js@^2.95.3",
         "npm:@types/node@^22.10.1",
         "npm:@types/react-dom@^18.3.1",
         "npm:@types/react@^18.3.12",
