@@ -199,7 +199,7 @@ export function PackagesBrowser({
                           `${pkg.credits_granted} minutes of consultation time`}
                         {pkg.tier_name === 'vip' && (
                           <span className="block mt-1 text-purple-600 font-medium">
-                            ✦ Includes a private lunch with Jason
+                            Includes a private lunch with Jason
                           </span>
                         )}
                       </CardDescription>
@@ -304,7 +304,7 @@ export function PackagesBrowser({
                                 {pkg.credits_granted} credits per billing period
                                 {pkg.tier_name === 'vip' && (
                                   <span className="block mt-1 text-purple-600 font-medium">
-                                    ✦ Includes monthly lunch with Jason
+                                    Includes monthly lunch with Jason
                                   </span>
                                 )}
                               </CardDescription>
