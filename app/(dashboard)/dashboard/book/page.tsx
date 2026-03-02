@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getAvailableSlots } from '@/lib/actions/availability'
-import { createBookingCheckout } from '@/lib/actions/stripe'
+import { bookMeetingWithCredits } from '@/lib/actions/credits'
 import {
   Card,
   CardContent,
@@ -21,16 +22,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Calendar, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { Calendar, Clock, ChevronLeft, ChevronRight, Loader2, Zap, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 import type { PricingTier, Availability, BlockedDate } from '@/lib/types/database'
 
 export default function BookMeetingPage() {
   const supabase = createClient()
+  const router = useRouter()
 
   const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([])
   const [availability, setAvailability] = useState<Availability[]>([])
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
+  const [creditsBalance, setCreditsBalance] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -43,24 +47,28 @@ export default function BookMeetingPage() {
   const [booking, setBooking] = useState(false)
 
   const selectedTier = pricingTiers.find((t) => t.id === selectedTierId)
+  const creditsRequired = selectedTier?.duration_minutes ?? 0
+  const hasEnoughCredits = creditsBalance >= creditsRequired
 
-  // Fetch pricing, availability, and blocked dates on mount
+  // Fetch pricing, availability, blocked dates, and credit balance on mount
   useEffect(() => {
     async function fetchData() {
-      const [{ data: tiers }, { data: avail }, { data: blocked }] =
+      const { data: { user } } = await supabase.auth.getUser()
+
+      const [{ data: tiers }, { data: avail }, { data: blocked }, { data: profile }] =
         await Promise.all([
-          supabase
-            .from('pricing_tiers')
-            .select('*')
-            .eq('is_active', true)
-            .order('sort_order'),
+          supabase.from('pricing_tiers').select('*').eq('is_active', true).order('sort_order'),
           supabase.from('availability').select('*'),
           supabase.from('blocked_dates').select('*'),
+          user
+            ? supabase.from('profiles').select('credits_balance').eq('id', user.id).single()
+            : Promise.resolve({ data: null }),
         ])
 
       setPricingTiers(tiers ?? [])
       setAvailability(avail ?? [])
       setBlockedDates(blocked ?? [])
+      setCreditsBalance(profile?.credits_balance ?? 0)
       setLoading(false)
     }
     fetchData()
@@ -98,21 +106,15 @@ export default function BookMeetingPage() {
   today.setHours(0, 0, 0, 0)
 
   const isDateSelectable = (day: number) => {
-    const date = new Date(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth(),
-      day
-    )
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
     if (date < today) return false
 
-    // Check if the day of week has availability
     const dayOfWeek = date.getDay()
     const hasAvailability = availability.some(
       (a) => a.day_of_week === dayOfWeek && a.is_available
     )
     if (!hasAvailability) return false
 
-    // Check if the date is blocked
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     const isBlocked = blockedDates.some((b) => b.blocked_date === dateStr)
     if (isBlocked) return false
@@ -122,9 +124,7 @@ export default function BookMeetingPage() {
 
   const handleDateClick = (day: number) => {
     if (isDateSelectable(day)) {
-      setSelectedDate(
-        new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-      )
+      setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))
     }
   }
 
@@ -143,18 +143,21 @@ export default function BookMeetingPage() {
     setBooking(true)
     const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
 
-    const result = await createBookingCheckout({
+    const result = await bookMeetingWithCredits({
       date: dateStr,
       time: selectedTime,
       pricing_tier_id: selectedTierId,
       client_notes: clientNotes || undefined,
     })
 
-    // Only reached if redirect didn't happen (i.e. an error was returned)
     if (result?.error) {
       toast.error(result.error)
       setBooking(false)
+      return
     }
+
+    toast.success('Meeting booked successfully!')
+    router.push('/dashboard')
   }
 
   if (loading) {
@@ -189,11 +192,7 @@ export default function BookMeetingPage() {
               <button
                 onClick={() =>
                   setCurrentMonth(
-                    new Date(
-                      currentMonth.getFullYear(),
-                      currentMonth.getMonth() - 1,
-                      1
-                    )
+                    new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
                   )
                 }
                 className="p-2 hover:bg-gray-100 rounded-lg"
@@ -209,11 +208,7 @@ export default function BookMeetingPage() {
               <button
                 onClick={() =>
                   setCurrentMonth(
-                    new Date(
-                      currentMonth.getFullYear(),
-                      currentMonth.getMonth() + 1,
-                      1
-                    )
+                    new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
                   )
                 }
                 className="p-2 hover:bg-gray-100 rounded-lg"
@@ -224,16 +219,11 @@ export default function BookMeetingPage() {
 
             {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-1 text-center">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(
-                (day) => (
-                  <div
-                    key={day}
-                    className="text-xs font-medium text-gray-500 py-2"
-                  >
-                    {day}
-                  </div>
-                )
-              )}
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <div key={day} className="text-xs font-medium text-gray-500 py-2">
+                  {day}
+                </div>
+              ))}
               {Array.from({ length: startingDay }).map((_, i) => (
                 <div key={`empty-${i}`} />
               ))}
@@ -259,29 +249,25 @@ export default function BookMeetingPage() {
               })}
             </div>
 
-            {/* Duration Selection */}
+            {/* Duration + Time Selection */}
             {selectedDate && (
               <div className="mt-6 space-y-4">
                 <div className="space-y-2">
                   <Label>Select Duration</Label>
-                  <Select
-                    value={selectedTierId}
-                    onValueChange={setSelectedTierId}
-                  >
+                  <Select value={selectedTierId} onValueChange={setSelectedTierId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Choose duration" />
                     </SelectTrigger>
                     <SelectContent>
                       {pricingTiers.map((tier) => (
                         <SelectItem key={tier.id} value={tier.id}>
-                          {tier.duration_minutes} minutes - ${tier.price}
+                          {tier.duration_minutes} minutes — {tier.duration_minutes} credits
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Time Selection */}
                 {selectedTier && (
                   <div className="space-y-2">
                     <Label>Select Time</Label>
@@ -291,10 +277,7 @@ export default function BookMeetingPage() {
                         Loading available times...
                       </div>
                     ) : timeSlots.length > 0 ? (
-                      <Select
-                        value={selectedTime}
-                        onValueChange={setSelectedTime}
-                      >
+                      <Select value={selectedTime} onValueChange={setSelectedTime}>
                         <SelectTrigger>
                           <SelectValue placeholder="Choose a time" />
                         </SelectTrigger>
@@ -314,7 +297,6 @@ export default function BookMeetingPage() {
                   </div>
                 )}
 
-                {/* Client Notes */}
                 {selectedTime && (
                   <div className="space-y-2">
                     <Label>Notes (optional)</Label>
@@ -332,32 +314,60 @@ export default function BookMeetingPage() {
           </CardContent>
         </Card>
 
-        {/* Right Column: Pricing + Summary */}
+        {/* Right Column */}
         <div className="space-y-6">
+          {/* Credit Balance Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Coaching Session Pricing</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-yellow-500" />
+                Your Credits
+              </CardTitle>
               <CardDescription>
-                Choose the session duration that best fits your needs.
+                1 credit = 1 minute of coaching time.{' '}
+                <Link href="/dashboard/packages" className="font-medium text-gray-900 hover:underline">
+                  Buy more credits →
+                </Link>
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {pricingTiers.map((tier) => (
-                <div
-                  key={tier.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
-                >
-                  <div>
-                    <p className="font-medium">{tier.duration_minutes} Minutes</p>
-                    <p className="text-sm text-gray-500">
-                      {tier.label}
-                    </p>
+            <CardContent>
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-bold">{creditsBalance}</span>
+                <span className="text-gray-500 mb-1">credits available</span>
+              </div>
+              <div className="mt-3 space-y-2">
+                {pricingTiers.map((tier) => (
+                  <div
+                    key={tier.id}
+                    className="flex items-center justify-between text-sm rounded-lg border px-3 py-2"
+                  >
+                    <span className="text-gray-700">{tier.duration_minutes} min session</span>
+                    <span className="font-medium">{tier.duration_minutes} credits</span>
                   </div>
-                  <p className="text-xl font-bold">${tier.price}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
           </Card>
+
+          {/* Insufficient credits warning */}
+          {selectedTier && !hasEnoughCredits && (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-800">Insufficient credits</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      You need {creditsRequired} credits but have {creditsBalance}.
+                    </p>
+                    <Button asChild size="sm" className="mt-3">
+                      <Link href="/dashboard/packages">Buy Credits</Link>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Booking Summary */}
           {selectedDate && selectedTime && selectedTier && (
@@ -380,9 +390,7 @@ export default function BookMeetingPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-gray-500" />
                   <span>
-                    {new Date(
-                      `2000-01-01T${selectedTime}`
-                    ).toLocaleTimeString('en-US', {
+                    {new Date(`2000-01-01T${selectedTime}`).toLocaleTimeString('en-US', {
                       hour: 'numeric',
                       minute: '2-digit',
                     })}{' '}
@@ -390,23 +398,30 @@ export default function BookMeetingPage() {
                   </span>
                 </div>
                 <div className="border-t pt-4 flex items-center justify-between">
-                  <span className="font-medium">Total</span>
-                  <span className="text-2xl font-bold">
-                    ${selectedTier.price}
-                  </span>
+                  <span className="font-medium">Cost</span>
+                  <div className="flex items-center gap-1">
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                    <span className="text-2xl font-bold">{creditsRequired}</span>
+                    <span className="text-gray-500 text-sm ml-1">credits</span>
+                  </div>
                 </div>
+                {hasEnoughCredits && (
+                  <p className="text-xs text-gray-400">
+                    Balance after booking: {creditsBalance - creditsRequired} credits
+                  </p>
+                )}
                 <Button
                   className="w-full"
                   onClick={handleBooking}
-                  disabled={booking}
+                  disabled={booking || !hasEnoughCredits}
                 >
                   {booking ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Redirecting to payment...
+                      Booking...
                     </>
                   ) : (
-                    'Confirm Booking'
+                    'Book with Credits'
                   )}
                 </Button>
               </CardContent>

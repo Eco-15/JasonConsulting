@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, Clock, FileText, Video } from 'lucide-react'
+import { Calendar, Clock, FileText, Video, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { MeetingActions } from './cancel-meeting-button'
 
@@ -17,7 +17,7 @@ export default async function MyMeetingsPage() {
 
   const now = new Date().toISOString()
 
-  const [{ data: upcomingMeetings }, { data: pastMeetings }] =
+  const [{ data: upcomingMeetings }, { data: pastMeetings }, { data: profile }] =
     await Promise.all([
       supabase
         .from('meetings')
@@ -32,20 +32,32 @@ export default async function MyMeetingsPage() {
         .eq('client_id', user.id)
         .or(`status.eq.completed,status.eq.cancelled,start_time.lt.${now}`)
         .order('start_time', { ascending: false }),
+      supabase.from('profiles').select('credits_balance').eq('id', user.id).single(),
     ])
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Meetings</h1>
           <p className="text-gray-500">
             View your upcoming and past coaching sessions.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/book">Book a Meeting</Link>
-        </Button>
+        <div className="flex items-center gap-3 shrink-0">
+          <Link href="/dashboard/packages">
+            <Card className="text-center px-4 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
+              <div className="flex items-center gap-1.5">
+                <Zap className="h-4 w-4 text-yellow-500" />
+                <span className="text-xl font-bold">{profile?.credits_balance ?? 0}</span>
+                <span className="text-xs text-gray-500">credits</span>
+              </div>
+            </Card>
+          </Link>
+          <Button asChild>
+            <Link href="/dashboard/book">Book a Meeting</Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="upcoming" className="w-full">
@@ -98,8 +110,8 @@ export default async function MyMeetingsPage() {
                       >
                         Scheduled
                       </Badge>
-                      <span className="text-sm font-medium">
-                        ${meeting.price}
+                      <span className="text-sm text-gray-500">
+                        {meeting.duration_minutes} credits used
                       </span>
                     </div>
                     {meeting.meet_url && (
@@ -183,8 +195,8 @@ export default async function MyMeetingsPage() {
                       >
                         {meeting.status}
                       </Badge>
-                      <span className="text-sm font-medium">
-                        ${meeting.price}
+                      <span className="text-sm text-gray-500">
+                        {meeting.duration_minutes} credits
                       </span>
                     </div>
                   </CardContent>

@@ -7,6 +7,56 @@ export interface Profile {
   full_name: string | null
   avatar_url: string | null
   role: UserRole
+  credits_balance: number
+  created_at: string
+  updated_at: string
+}
+
+export type PackageTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'vip'
+export type PackageType = 'consultation' | 'membership'
+export type BillingPeriod = 'once' | 'monthly' | 'bimonthly' | 'quarterly'
+export type TransactionType = 'purchase' | 'deduction' | 'subscription_renewal' | 'refund'
+export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due' | 'unpaid' | 'trialing'
+
+export interface Package {
+  id: string
+  name: string
+  tier_name: PackageTier
+  package_type: PackageType
+  billing_period: BillingPeriod
+  credits_granted: number
+  price_cents: number
+  stripe_price_id: string
+  description: string | null
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CreditTransaction {
+  id: string
+  client_id: string
+  transaction_type: TransactionType
+  credits_delta: number
+  balance_after: number
+  meeting_id: string | null
+  package_id: string | null
+  stripe_session_id: string | null
+  stripe_invoice_id: string | null
+  description: string | null
+  created_at: string
+}
+
+export interface ClientSubscription {
+  id: string
+  client_id: string
+  package_id: string
+  stripe_subscription_id: string
+  stripe_customer_id: string
+  status: SubscriptionStatus
+  current_period_start: string | null
+  current_period_end: string | null
   created_at: string
   updated_at: string
 }

@@ -14,6 +14,7 @@ import {
   DollarSign,
   LogOut,
   LayoutGrid,
+  Package,
 } from 'lucide-react'
 import type { UserRole } from '@/lib/types/database'
 
@@ -27,6 +28,11 @@ const clientNavItems = [
     title: 'My Meetings',
     href: '/dashboard',
     icon: FileText,
+  },
+  {
+    title: 'Packages',
+    href: '/dashboard/packages',
+    icon: Package,
   },
 ]
 
