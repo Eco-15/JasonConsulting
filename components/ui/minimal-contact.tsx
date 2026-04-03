@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Mail, ArrowRight, Loader2 } from "lucide-react";
+import { CalendarCheck, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { submitContact } from "@/lib/actions/contacts";
 
@@ -11,7 +11,6 @@ export function MinimalContact() {
     name: "",
     email: "",
     phone: "",
-    message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,8 +26,8 @@ export function MinimalContact() {
         return;
       }
 
-      toast.success("Message sent! We'll be in touch soon.");
-      setFormData({ name: "", email: "", phone: "", message: "" });
+      toast.success("You're registered! We'll send you the details soon.");
+      setFormData({ name: "", email: "", phone: "" });
     } catch {
       toast.error("Something went wrong. Please try again.");
     } finally {
@@ -37,7 +36,7 @@ export function MinimalContact() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
     setFormData({
       ...formData,
@@ -51,13 +50,13 @@ export function MinimalContact() {
         {/* Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center justify-center w-16 h-16 gold-gradient rounded-full mb-6 shadow-lg">
-            <Mail className="h-8 w-8 text-gray-900" />
+            <CalendarCheck className="h-8 w-8 text-gray-900" />
           </div>
           <h1 className="text-4xl md:text-6xl font-bold mb-4">
-            <span className="gold-gradient-text">Get in Touch</span>
+            <span className="gold-gradient-text">Save Your Spot</span>
           </h1>
           <p className="text-lg text-gray-600 max-w-xl mx-auto">
-            Let&apos;s start a conversation about transforming your leadership journey.
+            Register now to secure your place in our upcoming webinar.
           </p>
         </div>
 
@@ -101,19 +100,6 @@ export function MinimalContact() {
             />
           </div>
 
-          <div>
-            <textarea
-              id="message"
-              name="message"
-              value={formData.message}
-              onChange={handleChange}
-              required
-              rows={4}
-              placeholder="Your Message"
-              className="w-full px-0 py-4 border-0 border-b-2 border-gray-200 focus:border-[#d4af37] focus:outline-none focus:ring-0 text-lg placeholder:text-gray-400 transition-colors resize-none bg-transparent"
-            />
-          </div>
-
           <div className="pt-8">
             <Button
               type="submit"
@@ -124,11 +110,11 @@ export function MinimalContact() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Sending...
+                  Registering...
                 </>
               ) : (
                 <>
-                  Send Message
+                  Save Your Spot
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </>
               )}

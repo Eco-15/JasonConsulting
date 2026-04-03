@@ -8,14 +8,14 @@ const contactSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
-  message: z.string().min(1, 'Message is required'),
+  message: z.string().optional(),
 })
 
 export async function submitContact(formData: {
   name: string
   email: string
   phone: string
-  message: string
+  message?: string
 }) {
   const parsed = contactSchema.safeParse(formData)
   if (!parsed.success) {
@@ -30,18 +30,18 @@ export async function submitContact(formData: {
     name,
     email,
     phone: phone || null,
-    message,
+    message: message || null,
   })
 
   if (dbError) {
-    return { error: 'Failed to save your message. Please try again.' }
+    return { error: 'Failed to save your registration. Please try again.' }
   }
 
   // Send welcome SMS to the contact (if phone provided)
   if (phone) {
     try {
       await twilioClient.messages.create({
-        body: `Hi ${name}, thanks for reaching out to Jason Graziani Consulting! We've received your message and will get back to you shortly.`,
+        body: `Hi ${name}, you're registered for the upcoming Jason Graziani Consulting webinar! We'll send you the details soon.`,
         from: twilioPhoneNumber,
         to: phone,
       })
@@ -54,7 +54,7 @@ export async function submitContact(formData: {
   // Notify Jason about the new lead
   try {
     await twilioClient.messages.create({
-      body: `New lead from ${name}\nEmail: ${email}${phone ? `\nPhone: ${phone}` : ''}\nMessage: ${message}`,
+      body: `New webinar registration!\nName: ${name}\nEmail: ${email}${phone ? `\nPhone: ${phone}` : ''}`,
       from: twilioPhoneNumber,
       to: jasonPhoneNumber,
     })
