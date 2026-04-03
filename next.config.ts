@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
         destination: '/linkedin',
         permanent: true,
       },
+      {
+        source: '/contact',
+        destination: '/webinar',
+        permanent: true,
+      },
     ];
   },
 };

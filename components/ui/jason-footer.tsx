@@ -35,7 +35,7 @@ export function JasonFooter() {
       mainLinks={[
         { href: "/", label: "Home" },
         { href: "/#services", label: "Services" },
-        { href: "/contact", label: "Contact" },
+        { href: "/webinar", label: "Webinar" },
         { href: "https://www.leaderforlifeacademy.com/", label: "Leader For Life Academy" },
         { href: "https://eibagency.com", label: "EIB Agency" },
       ]}

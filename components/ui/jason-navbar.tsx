@@ -47,11 +47,11 @@ export function JasonNavbar({ className }: { className?: string }) {
         </MenuItem>
 
         <Link
-          href="/contact"
+          href="/webinar"
           className="relative z-50 cursor-pointer text-black hover:text-[#d4af37] transition-colors dark:text-white"
           onMouseEnter={() => setActive(null)}
         >
-          Contact
+          Webinar
         </Link>
 
         <AuthButton onHover={() => setActive(null)} />
