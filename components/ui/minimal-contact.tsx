@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CalendarCheck, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { submitContact } from "@/lib/actions/contacts";
 
@@ -45,22 +45,17 @@ export function MinimalContact() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4 pt-32 pb-20">
-      <div className="max-w-2xl w-full">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 gold-gradient rounded-full mb-6 shadow-lg">
-            <CalendarCheck className="h-8 w-8 text-gray-900" />
-          </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-4">
+    <div id="register" className="bg-white px-4 py-20">
+      <div className="max-w-xl w-full mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-3">
             <span className="gold-gradient-text">Save Your Spot</span>
-          </h1>
-          <p className="text-lg text-gray-600 max-w-xl mx-auto">
-            Register now to secure your place in our upcoming webinar.
+          </h2>
+          <p className="text-gray-600">
+            Fill in your details below to register.
           </p>
         </div>
 
-        {/* Contact Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <input
