@@ -2,6 +2,7 @@
 
 import Stripe from 'stripe'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -150,6 +151,98 @@ export async function cancelSubscription(subscriptionId: string) {
     .update({ status: 'cancelled', updated_at: new Date().toISOString() })
     .eq('id', subscriptionId)
 
+  return { success: true }
+}
+
+// ─── Admin package management ────────────────────────────────────────────────
+
+async function requireAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' as string, supabase: null }
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'admin') return { error: 'Unauthorized' as string, supabase: null }
+  return { error: null, supabase }
+}
+
+export async function adminCreatePackage(data: {
+  name: string
+  tier_name: string
+  package_type: string
+  billing_period: string
+  credits_granted: number
+  price_cents: number
+  description?: string
+  sort_order?: number
+}) {
+  const { error, supabase } = await requireAdmin()
+  if (error || !supabase) return { error: error ?? 'Unknown error' }
+
+  const { error: dbError } = await supabase.from('packages').insert({
+    name: data.name,
+    tier_name: data.tier_name,
+    package_type: data.package_type,
+    billing_period: data.billing_period,
+    credits_granted: data.credits_granted,
+    price_cents: data.price_cents,
+    description: data.description || null,
+    sort_order: data.sort_order ?? 0,
+    stripe_price_id: '',
+    is_active: true,
+  })
+
+  if (dbError) return { error: 'Failed to create package.' }
+  revalidatePath('/admin/pricing')
+  revalidatePath('/dashboard/packages')
+  return { success: true }
+}
+
+export async function adminUpdatePackage(id: string, data: {
+  name: string
+  description: string | null
+  price_cents: number
+  credits_granted: number
+  sort_order: number
+  billing_period: string
+}) {
+  const { error, supabase } = await requireAdmin()
+  if (error || !supabase) return { error: error ?? 'Unknown error' }
+
+  const { error: dbError } = await supabase
+    .from('packages')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (dbError) return { error: 'Failed to update package.' }
+  revalidatePath('/admin/pricing')
+  revalidatePath('/dashboard/packages')
+  return { success: true }
+}
+
+export async function adminTogglePackage(id: string, isActive: boolean) {
+  const { error, supabase } = await requireAdmin()
+  if (error || !supabase) return { error: error ?? 'Unknown error' }
+
+  const { error: dbError } = await supabase
+    .from('packages')
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (dbError) return { error: 'Failed to toggle package.' }
+  revalidatePath('/admin/pricing')
+  revalidatePath('/dashboard/packages')
+  return { success: true }
+}
+
+export async function adminDeletePackage(id: string) {
+  const { error, supabase } = await requireAdmin()
+  if (error || !supabase) return { error: error ?? 'Unknown error' }
+
+  const { error: dbError } = await supabase.from('packages').delete().eq('id', id)
+
+  if (dbError) return { error: 'Failed to delete package.' }
+  revalidatePath('/admin/pricing')
+  revalidatePath('/dashboard/packages')
   return { success: true }
 }
 

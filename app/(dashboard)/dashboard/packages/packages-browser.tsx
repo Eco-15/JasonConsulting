@@ -263,6 +263,8 @@ export function PackagesBrowser({
                 monthly: '/ month',
               }[period]
 
+              const annualMultiplier = { quarterly: 4, bimonthly: 6, monthly: 12 }[period]
+
               const periodCreditsNote = {
                 quarterly: '3 months of credits upfront',
                 bimonthly: '2 months of credits upfront',
@@ -317,6 +319,9 @@ export function PackagesBrowser({
                                 <span className="text-gray-500 ml-1 text-sm">
                                   {periodLabel}
                                 </span>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  ${((pkg.price_cents / 100) * annualMultiplier).toLocaleString()} / year
+                                </p>
                               </div>
                               <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
                                 <span className="font-semibold">{pkg.credits_granted} credits</span>

@@ -36,8 +36,8 @@ export function JasonFooter() {
         { href: "/", label: "Home" },
         { href: "/#services", label: "Services" },
         { href: "/contact", label: "Contact" },
-        { href: "/leader-for-life", label: "Leader For Life" },
-        { href: "/eib-agency", label: "EIB Agency" },
+        { href: "https://www.leaderforlifeacademy.com/", label: "Leader For Life Academy" },
+        { href: "https://eibagency.com", label: "EIB Agency" },
       ]}
       legalLinks={[
         { href: "/privacy", label: "Privacy Policy" },

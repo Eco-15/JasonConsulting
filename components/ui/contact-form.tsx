@@ -203,7 +203,7 @@ export function ContactForm() {
                       <option value="business-coaching">Business Coaching</option>
                       <option value="public-speaking">Public Speaking</option>
                       <option value="eib-agency">EIB Agency</option>
-                      <option value="leader-for-life">Leader For Life</option>
+                      <option value="leader-for-life">Leader For Life Academy</option>
                       <option value="other">Other</option>
                     </select>
                   </div>

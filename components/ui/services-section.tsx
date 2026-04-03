@@ -29,12 +29,14 @@ export function ServicesSection() {
             icon={<Building2 className="h-4 w-4" />}
             title="EIB Agency"
             description="Comprehensive insurance solutions designed to protect what matters most to you and your business."
+            link="https://eibagency.com"
           />
           <GridItem
             area=""
             icon={<GraduationCap className="h-4 w-4" />}
-            title="Leader For Life"
+            title="Leader For Life Academy"
             description="Transformative leadership development courses that equip individuals with the skills to lead with impact and integrity."
+            link="https://www.leaderforlifeacademy.com/"
           />
         </ul>
       </div>
@@ -48,12 +50,12 @@ interface GridItemProps {
   title: string;
   description: React.ReactNode;
   alignTop?: boolean;
+  link?: string;
 }
 
-const GridItem = ({ area, icon, title, description, alignTop = false }: GridItemProps) => {
-  return (
-    <li className={cn("min-h-[14rem] list-none", area)}>
-      <div className="relative h-full rounded-[1.25rem] border-2 border-gray-200 p-2 md:rounded-[1.5rem] md:p-3 hover:border-[#d4af37] transition-colors duration-300">
+const GridItem = ({ area, icon, title, description, alignTop = false, link }: GridItemProps) => {
+  const inner = (
+    <div className="relative h-full rounded-[1.25rem] border-2 border-gray-200 p-2 md:rounded-[1.5rem] md:p-3 hover:border-[#d4af37] transition-colors duration-300">
         <GlowingEffect
           spread={40}
           glow={true}
@@ -78,6 +80,15 @@ const GridItem = ({ area, icon, title, description, alignTop = false }: GridItem
           </div>
         </div>
       </div>
+  );
+
+  return (
+    <li className={cn("min-h-[14rem] list-none", area)}>
+      {link ? (
+        <a href={link} target="_blank" rel="noopener noreferrer" className="block h-full">
+          {inner}
+        </a>
+      ) : inner}
     </li>
   );
 };

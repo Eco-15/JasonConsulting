@@ -12,7 +12,20 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lyz5cvfr0h.ufs.sh',
       },
+      {
+        protocol: 'https',
+        hostname: 'media.licdn.com',
+      },
     ],
+  },
+  async redirects() {
+    return [
+      {
+        source: '/newsletter/:path*',
+        destination: '/linkedin',
+        permanent: true,
+      },
+    ];
   },
 };
 

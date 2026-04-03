@@ -25,7 +25,7 @@ const accordionItems = [
     id: 4,
     title: 'Leadership Trainer',
     imageUrl: 'https://lyz5cvfr0h.ufs.sh/f/tLx4hl5ikmOnCiRNubykjw7PSNi0m8alYrGqn6LoI9hUxsv4',
-    link: 'https://leaderforlife.com',
+    link: 'https://www.leaderforlifeacademy.com/',
   },
   {
     id: 5,

@@ -8,21 +8,21 @@ const footerColumns = [
     links: [
       { text: 'Business Coaching', href: '/contact' },
       { text: 'Public Speaking', href: '/contact' },
-      { text: 'Leadership Training', href: 'https://leaderforlife.com' },
+      { text: 'Leadership Training', href: 'https://www.leaderforlifeacademy.com/' },
       { text: 'Content Creation', href: 'https://youtube.com/@jasongraziani' },
     ],
   },
   {
     title: 'Businesses',
     links: [
-      { text: 'EIB Agency', href: '/eib-agency' },
-      { text: 'Leader For Life', href: 'https://leaderforlife.com' },
+      { text: 'EIB Agency', href: 'https://eibagency.com' },
+      { text: 'Leader For Life Academy', href: 'https://www.leaderforlifeacademy.com/' },
     ],
   },
   {
     title: 'Resources',
     links: [
-      { text: 'Newsletter', href: '/newsletter/subscribe' },
+      { text: 'LinkedIn Feed', href: '/linkedin' },
       { text: 'Contact', href: '/contact' },
       { text: 'About', href: '/#about' },
     ],

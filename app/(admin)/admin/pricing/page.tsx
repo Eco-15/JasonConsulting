@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  createPricingTier,
-  updatePricingTier,
-  togglePricingTier,
-  deletePricingTier,
-} from '@/lib/actions/pricing'
+  adminCreatePackage,
+  adminUpdatePackage,
+  adminTogglePackage,
+  adminDeletePackage,
+} from '@/lib/actions/packages'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,105 +22,225 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
-import type { PricingTier } from '@/lib/types/database'
+import {
+  Loader2,
+  Plus,
+  Pencil,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  Star,
+  Zap,
+  Crown,
+  Diamond,
+  Gem,
+} from 'lucide-react'
+import type { Package } from '@/lib/types/database'
+
+const TIER_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string; border: string }> = {
+  bronze:   { icon: Star,    color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200' },
+  silver:   { icon: Zap,     color: 'text-slate-500',  bg: 'bg-slate-50',  border: 'border-slate-200' },
+  gold:     { icon: Crown,   color: 'text-yellow-500', bg: 'bg-yellow-50', border: 'border-yellow-200' },
+  platinum: { icon: Diamond, color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-200' },
+  vip:      { icon: Gem,     color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
+}
+
+const PERIOD_LABEL: Record<string, string> = {
+  once:      'one-time',
+  monthly:   '/ month',
+  bimonthly: '/ 2 months',
+  quarterly: '/ quarter',
+}
+
+const ANNUAL_MULTIPLIER: Record<string, number> = {
+  monthly:   12,
+  bimonthly: 6,
+  quarterly: 4,
+}
 
 export default function PricingPage() {
   const supabase = createClient()
-  const [tiers, setTiers] = useState<PricingTier[]>([])
+
+  const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingTier, setEditingTier] = useState<PricingTier | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [pkgDialogOpen, setPkgDialogOpen] = useState(false)
+  const [editingPkg, setEditingPkg] = useState<Package | null>(null)
+  const [savingPkg, setSavingPkg] = useState(false)
+  const [pkgName, setPkgName] = useState('')
+  const [pkgTier, setPkgTier] = useState('bronze')
+  const [pkgType, setPkgType] = useState('consultation')
+  const [pkgBillingPeriod, setPkgBillingPeriod] = useState('once')
+  const [pkgCredits, setPkgCredits] = useState('')
+  const [pkgPrice, setPkgPrice] = useState('')
+  const [pkgDescription, setPkgDescription] = useState('')
+  const [pkgSortOrder, setPkgSortOrder] = useState('0')
 
-  // Form state
-  const [formLabel, setFormLabel] = useState('')
-  const [formDuration, setFormDuration] = useState('')
-  const [formPrice, setFormPrice] = useState('')
-  const [formDescription, setFormDescription] = useState('')
-  const [formSortOrder, setFormSortOrder] = useState('0')
-
-  const fetchTiers = async () => {
-    const { data } = await supabase
-      .from('pricing_tiers')
-      .select('*')
-      .order('sort_order')
-    setTiers(data ?? [])
+  const fetchData = async () => {
+    const { data } = await supabase.from('packages').select('*').order('sort_order')
+    setPackages(data ?? [])
     setLoading(false)
   }
 
   useEffect(() => {
-    fetchTiers()
+    fetchData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openCreateDialog = () => {
-    setEditingTier(null)
-    setFormLabel('')
-    setFormDuration('')
-    setFormPrice('')
-    setFormDescription('')
-    setFormSortOrder('0')
-    setDialogOpen(true)
+  const openCreatePkgDialog = () => {
+    setEditingPkg(null)
+    setPkgName('')
+    setPkgTier('bronze')
+    setPkgType('consultation')
+    setPkgBillingPeriod('once')
+    setPkgCredits('')
+    setPkgPrice('')
+    setPkgDescription('')
+    setPkgSortOrder('0')
+    setPkgDialogOpen(true)
   }
 
-  const openEditDialog = (tier: PricingTier) => {
-    setEditingTier(tier)
-    setFormLabel(tier.label)
-    setFormDuration(tier.duration_minutes.toString())
-    setFormPrice(tier.price.toString())
-    setFormDescription(tier.description || '')
-    setFormSortOrder(tier.sort_order.toString())
-    setDialogOpen(true)
+  const openEditPkgDialog = (pkg: Package) => {
+    setEditingPkg(pkg)
+    setPkgName(pkg.name)
+    setPkgTier(pkg.tier_name)
+    setPkgType(pkg.package_type)
+    setPkgBillingPeriod(pkg.billing_period)
+    setPkgCredits(pkg.credits_granted.toString())
+    setPkgPrice((pkg.price_cents / 100).toString())
+    setPkgDescription(pkg.description || '')
+    setPkgSortOrder(pkg.sort_order.toString())
+    setPkgDialogOpen(true)
   }
 
-  const handleSave = async () => {
-    setSaving(true)
-    const data = {
-      label: formLabel,
-      duration_minutes: Number(formDuration),
-      price: Number(formPrice),
-      description: formDescription || undefined,
-      sort_order: Number(formSortOrder),
-    }
-
-    const result = editingTier
-      ? await updatePricingTier(editingTier.id, data)
-      : await createPricingTier(data)
-
+  const handlePkgSave = async () => {
+    setSavingPkg(true)
+    const priceCents = Math.round(Number(pkgPrice) * 100)
+    const result = editingPkg
+      ? await adminUpdatePackage(editingPkg.id, {
+          name: pkgName,
+          description: pkgDescription || null,
+          price_cents: priceCents,
+          credits_granted: Number(pkgCredits),
+          sort_order: Number(pkgSortOrder),
+          billing_period: pkgBillingPeriod,
+        })
+      : await adminCreatePackage({
+          name: pkgName,
+          tier_name: pkgTier,
+          package_type: pkgType,
+          billing_period: pkgType === 'consultation' ? 'once' : pkgBillingPeriod,
+          credits_granted: Number(pkgCredits),
+          price_cents: priceCents,
+          description: pkgDescription || undefined,
+          sort_order: Number(pkgSortOrder),
+        })
     if (result.error) {
       toast.error(result.error)
     } else {
-      toast.success(editingTier ? 'Tier updated' : 'Tier created')
-      setDialogOpen(false)
-      await fetchTiers()
+      toast.success(editingPkg ? 'Package updated' : 'Package created')
+      setPkgDialogOpen(false)
+      await fetchData()
     }
-    setSaving(false)
+    setSavingPkg(false)
   }
 
-  const handleToggle = async (tier: PricingTier) => {
-    const result = await togglePricingTier(tier.id, !tier.is_active)
+  const handlePkgToggle = async (pkg: Package) => {
+    const result = await adminTogglePackage(pkg.id, !pkg.is_active)
     if (result.error) {
       toast.error(result.error)
     } else {
-      setTiers((prev) =>
-        prev.map((t) =>
-          t.id === tier.id ? { ...t, is_active: !t.is_active } : t
-        )
-      )
-      toast.success(tier.is_active ? 'Tier deactivated' : 'Tier activated')
+      setPackages((prev) => prev.map((p) => p.id === pkg.id ? { ...p, is_active: !p.is_active } : p))
+      toast.success(pkg.is_active ? 'Package deactivated' : 'Package activated')
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this pricing tier?')) return
-    const result = await deletePricingTier(id)
+  const handlePkgDelete = async (id: string) => {
+    if (!confirm('Delete this package? This cannot be undone.')) return
+    const result = await adminDeletePackage(id)
     if (result.error) {
       toast.error(result.error)
     } else {
-      setTiers((prev) => prev.filter((t) => t.id !== id))
-      toast.success('Tier deleted')
+      setPackages((prev) => prev.filter((p) => p.id !== id))
+      toast.success('Package deleted')
     }
+  }
+
+  const consultationPackages = packages.filter((p) => p.package_type === 'consultation')
+  const membershipPackages = packages.filter((p) => p.package_type === 'membership')
+
+  const renderPackageCard = (pkg: Package) => {
+    const config = TIER_CONFIG[pkg.tier_name]
+    const Icon = config?.icon ?? Star
+    return (
+      <Card
+        key={pkg.id}
+        className={`border ${config?.border ?? 'border-gray-200'} ${!pkg.is_active ? 'opacity-60' : ''}`}
+      >
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+          <div className="flex items-center gap-2">
+            <div className={`w-8 h-8 rounded-lg ${config?.bg ?? 'bg-gray-50'} flex items-center justify-center shrink-0`}>
+              <Icon className={`h-4 w-4 ${config?.color ?? 'text-gray-500'}`} />
+            </div>
+            <div>
+              <CardTitle className="text-base">{pkg.name}</CardTitle>
+              <p className="text-xs text-gray-500 capitalize">{pkg.tier_name}</p>
+            </div>
+          </div>
+          <Badge
+            variant="outline"
+            className={pkg.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}
+          >
+            {pkg.is_active ? 'Active' : 'Inactive'}
+          </Badge>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {pkg.description && (
+            <p className="text-sm text-gray-500">{pkg.description}</p>
+          )}
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold">${(pkg.price_cents / 100).toLocaleString()}</span>
+            <span className="text-gray-500 text-sm">{PERIOD_LABEL[pkg.billing_period] ?? ''}</span>
+          </div>
+          {pkg.billing_period !== 'once' && (
+            <p className="text-xs text-gray-400">
+              ${((pkg.price_cents / 100) * ANNUAL_MULTIPLIER[pkg.billing_period]).toLocaleString()} / year
+            </p>
+          )}
+          <p className="text-sm text-gray-600">
+            <span className="font-medium">{pkg.credits_granted} credits</span>
+            {' = '}
+            {pkg.credits_granted >= 60
+              ? `${pkg.credits_granted / 60}h`
+              : `${pkg.credits_granted}min`}
+          </p>
+          <div className="flex items-center gap-1 pt-1">
+            <Button variant="ghost" size="sm" onClick={() => openEditPkgDialog(pkg)} title="Edit">
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handlePkgToggle(pkg)}
+              title={pkg.is_active ? 'Deactivate' : 'Activate'}
+            >
+              {pkg.is_active
+                ? <ToggleRight className="h-4 w-4 text-green-600" />
+                : <ToggleLeft className="h-4 w-4 text-gray-400" />}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handlePkgDelete(pkg.id)} title="Delete">
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (loading) {
@@ -135,133 +256,153 @@ export default function PricingPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pricing</h1>
-          <p className="text-gray-500">
-            Manage your coaching session pricing tiers.
-          </p>
+          <p className="text-gray-500">Manage client packages and offerings.</p>
         </div>
-        <Button onClick={openCreateDialog}>
+        <Button onClick={openCreatePkgDialog}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Tier
+          Add Package
         </Button>
       </div>
 
-      {tiers.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {tiers.map((tier) => (
-            <Card
-              key={tier.id}
-              className={!tier.is_active ? 'opacity-60' : ''}
-            >
-              <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                <div>
-                  <CardTitle className="text-lg">{tier.label}</CardTitle>
-                  {tier.description && (
-                    <p className="mt-1 text-sm text-gray-500">
-                      {tier.description}
-                    </p>
-                  )}
-                </div>
-                <Badge
-                  variant="outline"
-                  className={
-                    tier.is_active
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-gray-100 text-gray-500'
-                  }
-                >
-                  {tier.is_active ? 'Active' : 'Inactive'}
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="text-3xl font-bold">${tier.price}</span>
-                  <span className="text-gray-500">
-                    / {tier.duration_minutes} min
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openEditDialog(tier)}
-                    title="Edit"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggle(tier)}
-                    title={tier.is_active ? 'Deactivate' : 'Activate'}
-                  >
-                    {tier.is_active ? (
-                      <ToggleRight className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <ToggleLeft className="h-4 w-4 text-gray-400" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(tier.id)}
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      {/* Consultation */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Consultation Packages</h2>
+          <p className="text-sm text-gray-500">One-time credit purchases.</p>
         </div>
-      ) : (
-        <div className="rounded-lg border border-dashed p-8 text-center bg-white">
-          <p className="text-gray-500">
-            No pricing tiers yet. Add your first one!
-          </p>
-        </div>
-      )}
+        {consultationPackages.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {consultationPackages.map(renderPackageCard)}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <p className="text-sm text-gray-400">No consultation packages.</p>
+          </div>
+        )}
+      </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Membership */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Membership Packages</h2>
+          <p className="text-sm text-gray-500">Recurring subscriptions with automatic credit renewal.</p>
+        </div>
+        {membershipPackages.length > 0 ? (
+          <Tabs defaultValue="quarterly">
+            <TabsList>
+              <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+              <TabsTrigger value="bimonthly">Bi-Monthly</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+            </TabsList>
+            {(['quarterly', 'bimonthly', 'monthly'] as const).map((period) => (
+              <TabsContent key={period} value={period} className="mt-4">
+                {membershipPackages.filter((p) => p.billing_period === period).length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {membershipPackages.filter((p) => p.billing_period === period).map(renderPackageCard)}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-6 text-center">
+                    <p className="text-sm text-gray-400">No {period} packages.</p>
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        ) : (
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <p className="text-sm text-gray-400">No membership packages.</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Package Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={pkgDialogOpen} onOpenChange={setPkgDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {editingTier ? 'Edit Pricing Tier' : 'New Pricing Tier'}
-            </DialogTitle>
+            <DialogTitle>{editingPkg ? 'Edit Package' : 'New Package'}</DialogTitle>
             <DialogDescription>
-              {editingTier
-                ? 'Update the pricing tier details.'
-                : 'Create a new coaching session pricing tier.'}
+              {editingPkg ? 'Update package details.' : 'Create a new client package.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Label</Label>
+              <Label>Name</Label>
               <Input
-                placeholder="e.g. Standard Session"
-                value={formLabel}
-                onChange={(e) => setFormLabel(e.target.value)}
+                placeholder="e.g. Bronze Consultation"
+                value={pkgName}
+                onChange={(e) => setPkgName(e.target.value)}
               />
             </div>
+            {!editingPkg && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tier</Label>
+                  <Select value={pkgTier} onValueChange={setPkgTier}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bronze">Bronze</SelectItem>
+                      <SelectItem value="silver">Silver</SelectItem>
+                      <SelectItem value="gold">Gold</SelectItem>
+                      <SelectItem value="platinum">Platinum</SelectItem>
+                      <SelectItem value="vip">VIP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select
+                    value={pkgType}
+                    onValueChange={(v) => {
+                      setPkgType(v)
+                      setPkgBillingPeriod(v === 'consultation' ? 'once' : 'monthly')
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="consultation">Consultation</SelectItem>
+                      <SelectItem value="membership">Membership</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            {(editingPkg ? editingPkg.package_type === 'membership' : pkgType === 'membership') && (
+              <div className="space-y-2">
+                <Label>Billing Period</Label>
+                <Select value={pkgBillingPeriod} onValueChange={setPkgBillingPeriod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="bimonthly">Bi-Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Duration (minutes)</Label>
+                <Label>Credits Granted</Label>
                 <Input
                   type="number"
-                  placeholder="60"
-                  value={formDuration}
-                  onChange={(e) => setFormDuration(e.target.value)}
-                  min={15}
-                  max={480}
+                  placeholder="120"
+                  value={pkgCredits}
+                  onChange={(e) => setPkgCredits(e.target.value)}
+                  min={1}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Price ($)</Label>
                 <Input
                   type="number"
-                  placeholder="175"
-                  value={formPrice}
-                  onChange={(e) => setFormPrice(e.target.value)}
+                  placeholder="299"
+                  value={pkgPrice}
+                  onChange={(e) => setPkgPrice(e.target.value)}
                   min={0}
                   step={0.01}
                 />
@@ -270,30 +411,28 @@ export default function PricingPage() {
             <div className="space-y-2">
               <Label>Description (optional)</Label>
               <Input
-                placeholder="A full-hour deep dive into your challenges."
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="Brief description of the package"
+                value={pkgDescription}
+                onChange={(e) => setPkgDescription(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label>Sort Order</Label>
               <Input
                 type="number"
-                value={formSortOrder}
-                onChange={(e) => setFormSortOrder(e.target.value)}
+                value={pkgSortOrder}
+                onChange={(e) => setPkgSortOrder(e.target.value)}
                 min={0}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setPkgDialogOpen(false)}>Cancel</Button>
             <Button
-              onClick={handleSave}
-              disabled={saving || !formLabel || !formDuration || !formPrice}
+              onClick={handlePkgSave}
+              disabled={savingPkg || !pkgName || !pkgCredits || !pkgPrice}
             >
-              {saving ? 'Saving...' : editingTier ? 'Update' : 'Create'}
+              {savingPkg ? 'Saving...' : editingPkg ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>

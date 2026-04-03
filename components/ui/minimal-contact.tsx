@@ -2,18 +2,38 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Mail, ArrowRight } from "lucide-react";
+import { Mail, ArrowRight, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { submitContact } from "@/lib/actions/contacts";
 
 export function MinimalContact() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     message: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
+    setIsSubmitting(true);
+
+    try {
+      const result = await submitContact(formData);
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Message sent! We'll be in touch soon.");
+      setFormData({ name: "", email: "", phone: "", message: "" });
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (
@@ -26,7 +46,7 @@ export function MinimalContact() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4 py-20">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 pt-32 pb-20">
       <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-16">
@@ -70,6 +90,18 @@ export function MinimalContact() {
           </div>
 
           <div>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="Your Phone Number"
+              className="w-full px-0 py-4 border-0 border-b-2 border-gray-200 focus:border-[#d4af37] focus:outline-none focus:ring-0 text-lg placeholder:text-gray-400 transition-colors bg-transparent"
+            />
+          </div>
+
+          <div>
             <textarea
               id="message"
               name="message"
@@ -86,10 +118,20 @@ export function MinimalContact() {
             <Button
               type="submit"
               size="lg"
+              disabled={isSubmitting}
               className="w-full md:w-auto silver-gradient-outline text-black hover:shadow-xl px-12 text-base group transition-all"
             >
-              Send Message
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  Send Message
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </Button>
           </div>
         </form>
